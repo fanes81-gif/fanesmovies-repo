@@ -24,7 +24,9 @@ import com.lagradost.cloudstream3.utils.StringUtils.encodeUri
 import com.lagradost.cloudstream3.utils.getAndUnpack
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import java.net.URI
 import java.util.Base64
 
 class FanesMovies : MainAPI() {
@@ -35,6 +37,15 @@ class FanesMovies : MainAPI() {
     override val hasQuickSearch = true
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
+    private val fallbackDomains = listOf(
+        "https://www.hdfilmcehennemi.nl",
+        "https://www.hdfilmcehennemi.de",
+        "https://www.hdfilmcehennemi.live"
+    )
+    private val defaultHeaders = mapOf(
+        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+        "Accept-Language" to "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
+    )
 
     override val mainPage = mainPageOf(
         "$mainUrl/category/tavsiye-filmler-izle2/page/" to "Tavsiye Filmler",
@@ -43,8 +54,84 @@ class FanesMovies : MainAPI() {
         "$mainUrl/en-cok-yorumlananlar/page/" to "En Cok Yorumlananlar"
     )
 
+    private fun isChallengePage(text: String): Boolean {
+        val body = text.lowercase()
+        return body.contains("cf-mitigated") ||
+            body.contains("just a moment") ||
+            body.contains("checking your browser") ||
+            body.contains("attention required") ||
+            body.contains("/cdn-cgi/challenge-platform")
+    }
+
+    private fun buildRelativePath(url: String): String? {
+        return runCatching {
+            val uri = URI(url)
+            val path = if (uri.rawPath.isNullOrBlank()) "/" else uri.rawPath
+            if (uri.rawQuery.isNullOrBlank()) path else "$path?${uri.rawQuery}"
+        }.getOrNull()
+    }
+
+    private fun buildCandidateUrls(urlOrPath: String): List<String> {
+        if (!urlOrPath.startsWith("http")) {
+            val path = if (urlOrPath.startsWith("/")) urlOrPath else "/$urlOrPath"
+            return fallbackDomains.map { "$it$path" }
+        }
+
+        val direct = mutableListOf(urlOrPath)
+        val path = buildRelativePath(urlOrPath) ?: return direct
+        fallbackDomains.forEach { base ->
+            val candidate = "$base$path"
+            if (candidate != urlOrPath) direct.add(candidate)
+        }
+        return direct.distinct()
+    }
+
+    private fun updateMainUrlFromUrl(url: String) {
+        val base = Regex("""https?://[^/]+""").find(url)?.value ?: return
+        mainUrl = base
+    }
+
+    private suspend fun requestDocument(urlOrPath: String, referer: String? = null): Document {
+        var lastError: Throwable? = null
+        for (url in buildCandidateUrls(urlOrPath)) {
+            try {
+                val response = app.get(url, referer = referer ?: "$mainUrl/", headers = defaultHeaders)
+                if (isChallengePage(response.text)) continue
+                updateMainUrlFromUrl(url)
+                return response.document
+            } catch (t: Throwable) {
+                lastError = t
+            }
+        }
+        throw ErrorLoadingException(lastError?.message ?: "Site challenge blocked request")
+    }
+
+    private suspend fun requestSearchJson(query: String): String? {
+        for (base in fallbackDomains) {
+            try {
+                val response = app.post(
+                    "$base/search/",
+                    data = mapOf("query" to query),
+                    referer = "$base/",
+                    headers = defaultHeaders + mapOf(
+                        "Accept" to "application/json, text/javascript, */*; q=0.01",
+                        "X-Requested-With" to "XMLHttpRequest"
+                    )
+                )
+                if (isChallengePage(response.text)) continue
+                if (response.text.contains("\"result\"")) {
+                    mainUrl = base
+                    return response.text
+                }
+            } catch (_: Throwable) {
+            }
+        }
+        return null
+    }
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("${request.data}$page").document
+        val path = buildRelativePath("${request.data}$page") ?: "/"
+        val document = requestDocument(path)
         val home = document.select("div.poster-container, div.poster.poster-pop, div.card-list-item")
             .mapNotNull { it.toSearchResult() }
         return newHomePageResponse(request.name, home)
@@ -94,32 +181,24 @@ class FanesMovies : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val htmlResults = app.get("$mainUrl/search/?q=${query.encodeUri()}").document
+        val htmlResults = requestDocument("/search/?q=${query.encodeUri()}")
             .select("div.poster-container, div.poster.poster-pop, div.card-list-item")
             .mapNotNull { it.toSearchResult() }
             .distinctBy { it.url }
 
         if (htmlResults.isNotEmpty()) return htmlResults
 
-        val json = app.post(
-            "$mainUrl/search/",
-            data = mapOf("query" to query),
-            referer = "$mainUrl/",
-            headers = mapOf(
-                "Accept" to "application/json, text/javascript, */*; q=0.01",
-                "X-Requested-With" to "XMLHttpRequest"
-            )
-        ).text
+        val json = requestSearchJson(query) ?: return emptyList()
 
         return tryParseJson<Result>(json)
             ?.result
             ?.mapNotNull { it.toSearchResponse() }
             ?.distinctBy { it.url }
-            ?: throw ErrorLoadingException("Search response could not be parsed")
+            ?: emptyList()
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
+        val document = requestDocument(url)
 
         val title = document.selectFirst("div.card-header > h1, div.card-header > h2, h1")
             ?.text()
@@ -195,7 +274,7 @@ class FanesMovies : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (com.lagradost.cloudstream3.utils.ExtractorLink) -> Unit
     ) {
-        val script = app.get(url, referer = "$mainUrl/").document
+        val script = requestDocument(url, "$mainUrl/")
             .select("script")
             .firstOrNull { it.data().contains("sources:") || it.data().contains("file_link=") }
             ?.data()
@@ -238,7 +317,7 @@ class FanesMovies : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (com.lagradost.cloudstream3.utils.ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data).document
+        val document = requestDocument(data)
         val sourceTabs = document.select("nav.nav.card-nav.nav-slider a.nav-link, a.nav-link[data-bs-toggle]")
             .mapNotNull {
                 val href = toAbsUrlOrNull(it.attr("href")) ?: return@mapNotNull null
@@ -263,7 +342,7 @@ class FanesMovies : MainAPI() {
 
         for ((tabUrl, source) in sourceTabs) {
             try {
-                val iframe = app.get(tabUrl).document
+                val iframe = requestDocument(tabUrl)
                     .selectFirst("div.card-video iframe, iframe[data-src], iframe[src]")
                     ?.let { it.attr("data-src").ifBlank { it.attr("src") } }
                     ?: continue
