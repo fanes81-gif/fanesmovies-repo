@@ -18,6 +18,7 @@ import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
+import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.StringUtils.encodeUri
@@ -28,6 +29,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.net.URI
 import java.util.Base64
+import kotlin.text.Regex
 
 class FanesMovies : MainAPI() {
     override var name = "FanesMovies"
@@ -37,15 +39,28 @@ class FanesMovies : MainAPI() {
     override val hasQuickSearch = true
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
-    private val fallbackDomains = listOf(
+    private val fallbackDomains = mutableListOf(
         "https://www.hdfilmcehennemi.nl",
-        "https://www.hdfilmcehennemi.de",
-        "https://www.hdfilmcehennemi.live"
+        "https://www.hdfilmcehennemi.ws",
+        "https://hdfilmcehennemi.mobi"
     )
     private val defaultHeaders = mapOf(
-        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
         "Accept-Language" to "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
     )
+    private val domainListUrl = "https://raw.githubusercontent.com/Kraptor123/domainListesi/refs/heads/main/eklenti_domainleri.txt"
+    private var lastDomainRefresh = 0L
+    private val cloudflareInterceptor by lazy {
+        WebViewResolver(
+            interceptUrl = Regex("""https?://(www\.)?hdfilmcehennemi\..*"""),
+            additionalUrls = emptyList(),
+            userAgent = defaultHeaders["User-Agent"],
+            useOkhttp = true,
+            script = "",
+            scriptCallback = { },
+            timeout = 20_000L
+        )
+    }
 
     override val mainPage = mainPageOf(
         "$mainUrl/category/tavsiye-filmler-izle2/page/" to "Tavsiye Filmler",
@@ -61,6 +76,25 @@ class FanesMovies : MainAPI() {
             body.contains("checking your browser") ||
             body.contains("attention required") ||
             body.contains("/cdn-cgi/challenge-platform")
+    }
+
+    private suspend fun refreshDomains() {
+        val now = System.currentTimeMillis()
+        if (now - lastDomainRefresh < 15 * 60 * 1000) return
+        lastDomainRefresh = now
+
+        try {
+            val txt = app.get(domainListUrl, headers = defaultHeaders).text
+            val line = txt.lineSequence()
+                .firstOrNull { it.startsWith("|HDFilmCehennemi:", ignoreCase = true) }
+            val dynamic = line?.substringAfter(":")?.trim()?.removeSuffix("/")
+            if (!dynamic.isNullOrBlank() && dynamic.startsWith("http")) {
+                fallbackDomains.remove(dynamic)
+                fallbackDomains.add(0, dynamic)
+                mainUrl = dynamic
+            }
+        } catch (_: Throwable) {
+        }
     }
 
     private fun buildRelativePath(url: String): String? {
@@ -92,10 +126,16 @@ class FanesMovies : MainAPI() {
     }
 
     private suspend fun requestDocument(urlOrPath: String, referer: String? = null): Document {
+        refreshDomains()
         var lastError: Throwable? = null
         for (url in buildCandidateUrls(urlOrPath)) {
             try {
-                val response = app.get(url, referer = referer ?: "$mainUrl/", headers = defaultHeaders)
+                val response = app.get(
+                    url,
+                    referer = referer ?: "$mainUrl/",
+                    headers = defaultHeaders,
+                    interceptor = cloudflareInterceptor
+                )
                 if (isChallengePage(response.text)) continue
                 updateMainUrlFromUrl(url)
                 return response.document
@@ -107,6 +147,7 @@ class FanesMovies : MainAPI() {
     }
 
     private suspend fun requestSearchJson(query: String): String? {
+        refreshDomains()
         for (base in fallbackDomains) {
             try {
                 val response = app.post(
@@ -116,7 +157,8 @@ class FanesMovies : MainAPI() {
                     headers = defaultHeaders + mapOf(
                         "Accept" to "application/json, text/javascript, */*; q=0.01",
                         "X-Requested-With" to "XMLHttpRequest"
-                    )
+                    ),
+                    interceptor = cloudflareInterceptor
                 )
                 if (isChallengePage(response.text)) continue
                 if (response.text.contains("\"result\"")) {
