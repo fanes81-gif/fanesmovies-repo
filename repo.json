@@ -1,8 +1,8 @@
 {
-  "name": "FanesMovies Repo",
-  "description": "Fatih'in CloudStream eklentileri",
-  "manifestVersion": 1,
-  "pluginLists": [
-    "https://raw.githubusercontent.com/fanes81-gif/fanesmovies-repo/main/plugins.json"
-  ]
+    "name": "Cloudstream providers repository",
+    "description": "Cloudstream extension Repository",
+    "manifestVersion": 1,
+    "pluginLists": [
+      "https://raw.githubusercontent.com/fanes81-gif/fanesmovies-repo/builds/plugins.json"
+    ]
 }
