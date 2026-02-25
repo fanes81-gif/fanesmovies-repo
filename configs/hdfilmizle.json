@@ -4,7 +4,7 @@
   "providerClass": "HDFilmizle",
   "mainUrl": "https://www.hdfilmizle.life",
   "language": "tr",
-  "version": 6,
+  "version": 7,
   "status": 1,
   "tvTypes": "Dizi,Film",
   "authors": "Fanes",
@@ -22,5 +22,9 @@
   "cardPosterAttr": "data-src",
   "detailPlotSelector": "article.text-white > p",
   "detailIframeSelector": ".card-video .vp iframe.vpx",
+  "detailTagsSelector": "a[rel=tag], div.genres a, .genres a",
+  "detailTrailerSelector": "button[data-trailer], a[data-trailer], iframe[data-src], iframe[src]",
+  "detailTrailerAttr": "data-trailer",
+  "detailTrailerTemplate": "https://www.youtube.com/embed/{value}",
   "detailIframeAttr": "data-src"
 }
