@@ -27,14 +27,14 @@
     "language": "tr",
     "status": 1,
     "tvTypes": [
-      "Film",
-      "Dizi"
+      "Dizi",
+      "Film"
     ],
     "authors": [
       "Fanes"
     ],
-    "description": "hdfilmizle sitesinden çekilen film ve dizileri içerir.",
-    "fileSize": 3811,
+    "description": "HDFilmizle sitesi içeriklerinin keyfini çıkarın.",
+    "fileSize": 11006,
     "cs3FileName": "hdfilmizle.cs3"
   }
 ]
