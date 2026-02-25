@@ -21,7 +21,7 @@
   {
     "name": "HDFilmizle",
     "internalName": "hdfilmizle",
-    "version": 2,
+    "version": 3,
     "url": "https://raw.githubusercontent.com/fanes81-gif/fanesmovies-repo/builds/hdfilmizle.cs3",
     "apiVersion": 1,
     "language": "tr",
@@ -33,8 +33,8 @@
     "authors": [
       "Fanes"
     ],
-    "description": "test içerik",
-    "fileSize": 11183,
+    "description": "HDFilmizle sitesi film ve dizi kaynağıdır.",
+    "fileSize": 11632,
     "cs3FileName": "hdfilmizle.cs3"
   }
 ]
