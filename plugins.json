@@ -2,7 +2,7 @@
   {
     "name": "dizibox",
     "internalName": "dizibox",
-    "version": 5,
+    "version": 6,
     "url": "https://raw.githubusercontent.com/fanes81-gif/fanesmovies-repo/builds/dizibox.cs3",
     "apiVersion": 1,
     "language": "tr",
@@ -14,7 +14,7 @@
       "Fanes"
     ],
     "description": "DiziboxLive kaynagi",
-    "fileSize": 55055,
+    "fileSize": 57392,
     "cs3FileName": "dizibox.cs3"
   },
   {
