@@ -20,7 +20,7 @@
   {
     "name": "Dizipal1541",
     "internalName": "dizipal1541",
-    "version": 2,
+    "version": 3,
     "url": "https://raw.githubusercontent.com/fanes81-gif/fanesmovies-repo/builds/dizipal1541.cs3",
     "apiVersion": 1,
     "language": "tr",
@@ -33,7 +33,7 @@
       "fanes"
     ],
     "description": "Dizipal1541 kaynagini kullanan dizi/film saglayici",
-    "fileSize": 94380,
+    "fileSize": 97876,
     "cs3FileName": "dizipal1541.cs3"
   },
   {
