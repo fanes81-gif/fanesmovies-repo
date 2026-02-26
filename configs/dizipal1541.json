@@ -4,7 +4,7 @@
   "providerClass": "Dizipal1541",
   "mainUrl": "https://dizipal1541.com",
   "language": "tr",
-  "version": 2,
+  "version": 3,
   "status": 1,
   "tvTypes": "Movie,TvSeries",
   "authors": "fanes",
@@ -29,5 +29,6 @@
   "detailTrailerSelector": "utton[data-trailer], a[data-trailer], iframe[data-src], iframe[src]",
   "detailTrailerAttr": "data-trailer",
   "detailTrailerTemplate": "https://www.youtube.com/embed/{{value}}",
-  "detailIframeAttr": "src"
+  "detailIframeAttr": "src",
+  "tmdbApiKey": ""
 }
