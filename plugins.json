@@ -18,24 +18,6 @@
     "cs3FileName": "dizibox.cs3"
   },
   {
-    "name": "DiziFilm",
-    "internalName": "dizifilmorg",
-    "version": 1,
-    "url": "https://raw.githubusercontent.com/fanes81-gif/fanesmovies-repo/builds/dizifilmorg.cs3",
-    "apiVersion": 1,
-    "language": "tr",
-    "status": 1,
-    "tvTypes": [
-      "TvSeries"
-    ],
-    "authors": [
-      "Fanes"
-    ],
-    "description": "dizifilm.org sitesi eklentisi",
-    "fileSize": 102073,
-    "cs3FileName": "dizifilmorg.cs3"
-  },
-  {
     "name": "FanesMovies",
     "internalName": "fanesmovies",
     "version": 6,
