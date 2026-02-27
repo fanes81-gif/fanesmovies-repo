@@ -73,5 +73,24 @@
     "description": "HDFilmizle sitesi film ve dizi kaynağıdır.",
     "fileSize": 51854,
     "cs3FileName": "hdfilmizle.cs3"
+  },
+  {
+    "name": "SezonlukdiziCc",
+    "internalName": "sezonlukdizicc",
+    "version": 1,
+    "url": "https://raw.githubusercontent.com/fanes81-gif/fanesmovies-repo/builds/sezonlukdizicc.cs3",
+    "apiVersion": 1,
+    "language": "tr",
+    "status": 1,
+    "tvTypes": [
+      "Movie",
+      "TvSeries"
+    ],
+    "authors": [
+      "Fatih"
+    ],
+    "description": "SezonlukdiziCc kaynagi",
+    "fileSize": 102108,
+    "cs3FileName": "sezonlukdizicc.cs3"
   }
 ]
